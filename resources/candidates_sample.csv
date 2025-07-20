@@ -1,0 +1,6 @@
+name,skills,summary,projects,in_project,residence
+박지훈,"Java, Spring Boot, MySQL, Vue.js","3년 차 풀스택 개발자, 병원 시스템 경험 있음",- 서울대병원 진료예약 시스템 (2023),False,경기도 수원시
+이서연,"Java, Spring Boot, Oracle","4년 차 백엔드 개발자, Oracle 중심 경험",- 국민연금 통합관리 시스템 (2022),True,서울시 마포구
+최민수,"Node.js, React, MongoDB",3년 차 프론트엔드 개발자,- 스타트업 쇼핑몰 프론트 개발 (2023),False,경기도 성남시 분당구
+김하늘,"Java, JSP, Oracle","5년 차 웹 개발자, 공공기관 유지보수 다수",- 행정안전부 인사관리시스템 (2021),False,서울시 구로구
+정유진,"Python, Django, PostgreSQL","2년 차 백엔드 개발자, 빠른 학습 능력",- 비영리 단체 CMS 개발 (2024),False,경기도 고양시 일산서구
