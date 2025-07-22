@@ -4,7 +4,6 @@ from openai import AzureOpenAI
 import os
 from dotenv import load_dotenv
 import re
-import pymysql
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
 
@@ -26,17 +25,6 @@ client = AzureOpenAI(
     azure_endpoint=azure_endpoint,
     api_key=api_key,
 )
-
-db = pymysql.connect(
-    host=os.getenv("DB_HOSTNAME"),
-    user=os.getenv("DB_USERNAME"),
-    password=os.getenv("DB_PASSWORD"),
-    database=os.getenv("DB_NAME"),
-    charset='utf8mb4',
-    cursorclass=pymysql.cursors.DictCursor
-)
-
-cursor = db.cursor()
 
 # Initialize Azure Cognitive Search Client
 search_client = SearchClient(
