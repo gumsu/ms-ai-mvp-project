@@ -5,6 +5,8 @@ import os
 from dotenv import load_dotenv
 import re
 import pymysql
+from azure.core.credentials import AzureKeyCredential
+from azure.search.documents import SearchClient
 
 load_dotenv()
 
@@ -13,6 +15,11 @@ azure_endpoint = os.getenv("OPENAI_AZURE_ENDPOINT")
 api_type = os.getenv("OPENAI_API_TYPE")
 api_version = os.getenv("OPENAI_API_VERSION")
 deployment = "user03-gpt-4o-mini"
+
+search_endpoint = os.environ["AZURE_SEARCH_ENDPOINT"]
+search_key= os.environ["AZURE_AI_SEARCH_QUERY_KEY"]
+credential = AzureKeyCredential(search_key)
+index_name = os.getenv("AZURE_SEARCH_INDEX", "user03-rag-002")
 
 client = AzureOpenAI(
     api_version=api_version,
@@ -30,6 +37,13 @@ db = pymysql.connect(
 )
 
 cursor = db.cursor()
+
+# Initialize Azure Cognitive Search Client
+search_client = SearchClient(
+    endpoint=search_endpoint,
+    index_name=index_name,
+    credential=credential
+)
 
 def extract_top_n_candidates(response, n=3):
     # pattern = r"(\d+)\.\s*이름:\s*(.*?)\n\s*(\d+)\.\s*([0-9]+점)\s*-\s*(.*)"
@@ -108,3 +122,18 @@ if st.button("추천 시작") and uploaded_file:
                 st.write("---")
         else:
             st.write("추천할 인재가 없습니다.")
+
+# Add a new section for AI Search
+st.markdown("## 🔍 AI 검색 결과")
+if st.button("AI 검색 실행"):
+    with st.spinner("검색 중..."):
+        search_results = search_client.search(
+            search_text=project_input,  # Use project description as the search query
+            top=5,
+            select=['name', 'residence_city', 'department', 'project_name', 'project_role', 'start_date', 'end_date', 'tech_stack','region_city']
+        )
+
+        st.markdown("### 검색 결과")
+        for result in search_results:
+            st.write(f"- {result['name']}")
+            st.write(result)
