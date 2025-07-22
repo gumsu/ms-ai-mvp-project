@@ -45,16 +45,16 @@ search_client = SearchClient(
     credential=credential
 )
 
-def extract_top_n_candidates(response, n=3):
-    # pattern = r"(\d+)\.\s*이름:\s*(.*?)\n\s*(\d+)\.\s*([0-9]+점)\s*-\s*(.*)"
-    pattern = r"이름:\s*(.*?)\n\s*(\d+)점\s*-\s*(.*)"
+def extract_top_n_candidates(response, n=5):
+    pattern = r"이름:\s*(.*?)\n\s*역할:\s*(.*?)\n\s*(\d+)점:\s*(.*)"
     matches = re.findall(pattern, response)
 
     candidates = []
     for match in matches:
-        name, score, reason = match[0], match[1], match[2]
+        name, role, score, reason = match[0], match[1], match[2], match[3]
         candidates.append({
             "name": name,
+            "role": role,
             "score": score,
             "reason": reason
         })
@@ -72,68 +72,62 @@ def make_prompt(project_description, candidates):
 
     - 이 프로젝트에 **얼마나 적합한지 1~10점으로 평가**
     - 한 줄로 이유를 설명
-    - 현재 다른 프로젝트에 참여 중이라면 "참여 불가"로 평가
+    - 현재 다른 프로젝트에 참여 중이라면 "참여 불가"로 평가 (웬만하면 후순위)
     - 지역(거주지 vs 프로젝트 위치)이 맞지 않으면 감점
+    - history 내역이므로 중복된 인재가 있다면 1번만 출력
 
-    [인재 목록]
+    [인재 목록] (JSON 형식)
     """
-
-    for idx, c in enumerate(candidates, 1):
+    for result in search_results:
         prompt += f"""
-        {idx}. 이름: {c['name']}
-        기술스택: {c['skills']}
-        경력요약: {c['summary']}
-        프로젝트 이력: {c['projects']}
-        현재 상태: {"프로젝트 참여 중" if c['in_project'] else "배정 가능"}
-        거주지: {c['residence']}
+        {result}
         """
 
-        prompt += "\n각 인재에 대해 아래와 같이 출력해 주세요:\n예시)\n이름: 홍길동\n 8점 - 기술 스택과 경력은 적합하지만 지역이 멀어 감점"
+    prompt += "\n각 인재에 대해 아래와 같이 출력해 주세요:\n예시)\n이름: 홍길동\n역할: PM\n8점: 기술 스택과 경력은 적합하지만 지역이 멀어 감점"
     return prompt
 
 # 1. 프로젝트 정보 입력
 st.title("프로젝트 인재 추천 시스템")
-
-project_input = st.text_area("📝 프로젝트 설명을 입력해주세요")
-uploaded_file = st.file_uploader("📄 인재 데이터 CSV 파일 (이름, 경력, 기술 스택, 프로젝트 경험 등)", type="csv")
+placeholder = """예)
+    프로젝트 이름: AI 기반 통신 데이터 분석 프로젝트
+    프로젝트 설명: AI를 활용하여 대규모 통신 데이터 분석 및 예측 모델 개발
+    프로젝트 기간: 2026-01-01 ~ 2026-12-31
+    필요한 기술 스택: Python, Azure, AI
+    필요한 역할: PM, 개발자, 데이터 분석가
+    지역: 서울 
+"""
+project_input = st.text_area("📝 프로젝트 설명을 입력해주세요", placeholder=placeholder, height=200)
 
 # 2. 추천 시작 버튼
-if st.button("추천 시작") and uploaded_file:
-    with st.spinner("추천 중..."):
-        df = pd.read_csv(uploaded_file)
-        candidates = df.to_dict(orient="records")
-        prompt = make_prompt(project_input, candidates)
-        
+st.markdown("## 🔍 AI 검색 결과")
+if st.button("AI 검색 실행"):
+    with st.spinner("검색 중..."):
+        search_results = search_client.search(
+            search_text=project_input,  # Use project description as the search query
+            select=['name', 'residence_city', 'department', 'project_name', 'project_role', 'start_date', 'end_date', 'tech_stack','region_city']
+        )
+
+        prompt = make_prompt(project_input, search_results)
+
+        st.markdown(prompt)
+
         response = client.chat.completions.create(
                 model=deployment,
                 messages=[
                     {"role": "system", "content": prompt},
                 ]
             ) 
-        st.markdown(response.choices[0].message.content)
-        st.markdown("### 추천 결과")
+        
+        
+        st.markdown("### 검색 결과")
         top_candidates = extract_top_n_candidates(response.choices[0].message.content)
         if top_candidates:
             for idx, candidate in enumerate(top_candidates):
                 st.write(f"**{idx+1}번**")
                 st.write(f"**이름:** {candidate['name']}")
-                st.write(f"**점수:** {candidate['score']}")
+                st.write(f"**역할:** {candidate['role']}")
+                st.write(f"**점수:** {candidate['score']}점")
                 st.write(f"**이유:** {candidate['reason']}")
                 st.write("---")
         else:
             st.write("추천할 인재가 없습니다.")
-
-# Add a new section for AI Search
-st.markdown("## 🔍 AI 검색 결과")
-if st.button("AI 검색 실행"):
-    with st.spinner("검색 중..."):
-        search_results = search_client.search(
-            search_text=project_input,  # Use project description as the search query
-            top=5,
-            select=['name', 'residence_city', 'department', 'project_name', 'project_role', 'start_date', 'end_date', 'tech_stack','region_city']
-        )
-
-        st.markdown("### 검색 결과")
-        for result in search_results:
-            st.write(f"- {result['name']}")
-            st.write(result)
