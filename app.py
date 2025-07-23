@@ -106,7 +106,7 @@ placeholder = """예)
     프로젝트 기간: 2026-01-01 ~ 2026-12-31
     필요한 기술 스택: Python, Azure, AI
     필요한 역할: PM, 개발자, 데이터 분석가
-    지역: 서울 
+    지역: 서초구
 """
 project_input = st.text_area("📝 프로젝트 설명을 입력해주세요", placeholder=placeholder, height=200)
 
